@@ -3,7 +3,7 @@ from aiogram import Bot, Dispatcher, types, executor
 import logging
 import os
 from rss_parser import Parser
-import requests
+from requests import get
 from pymongo import MongoClient
 import asyncio
 import json
@@ -40,7 +40,7 @@ async def start(message: types.Message):
 
 @dp.message_handler(commands='btc')
 async def btc(message: types.Message):
-    r = requests.get("https://blockchain.info/ticker")
+    r = get("https://blockchain.info/ticker")
     price = json.loads(r.text)
     btc_real = price["RUB"]['last']
     btc_eft = btc_real / 5 / 2.38
