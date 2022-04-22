@@ -1,16 +1,17 @@
+from urllib import request
 from aiogram import Bot, Dispatcher, types, executor
-import logging, os
+import logging
+import os
 from rss_parser import Parser
-from requests import get
+import requests
 from pymongo import MongoClient
 import asyncio
+import json
 
 logging.basicConfig(level=logging.INFO)
 token = os.environ.get('BOT_TOKEN')
 mongo_url = os.environ.get('MONGODB_URI')
 user_id = os.environ.get('USER_ID')
-
-bot = Bot(token)
 dp = Dispatcher(bot)
 
 
@@ -20,12 +21,13 @@ collection = db["nnm"]
 
 
 urls_list = [
-        'https://nnmclub.to/forum/rss.php?f=411&t=1',
-        'https://nnmclub.to/forum/rss.php?f=769&t=1',
-        'https://nnmclub.to/forum/rss.php?f=768&t=1',
-        'https://nnmclub.to/forum/rss.php?f=463&t=1',
-        'https://nnmclub.to/forum/rss.php?f=954&t=1'
-    ]
+    'https://nnmclub.to/forum/rss.php?f=411&t=1',
+    'https://nnmclub.to/forum/rss.php?f=769&t=1',
+    'https://nnmclub.to/forum/rss.php?f=768&t=1',
+    'https://nnmclub.to/forum/rss.php?f=463&t=1',
+    'https://nnmclub.to/forum/rss.php?f=954&t=1'
+]
+
 
 @dp.message_handler(commands=['start', 'help'])
 async def start(message: types.Message):
@@ -34,6 +36,15 @@ async def start(message: types.Message):
     # keyboard.add(*start_buttons)
     await message.answer("Лента новостей")
 
+
+@dp.message_handler(commands='btc')
+async def btc(message: types.Message):
+    r = requests.get("https://blockchain.info/ticker")
+    price = json.loads(r.text)
+    btc_real = price["RUB"]['last']
+    btc_eft = btc_real / 5 / 2.38
+    btc_eft = int(btc_eft)
+    await message.answer(f"btc-rub: {btc_real}\nbtc Tarkov: {btc_eft}")
 
 
 @dp.message_handler(commands=['fresh'])
@@ -53,7 +64,6 @@ async def fresh(message: types.Message):
                 article_desc = item.description[0:700]
                 article_desc_links = item.description_links[1]
 
-
                 fresh_news = {
                     "_id": article_id,
                     "article_date": article_date,
@@ -64,7 +74,7 @@ async def fresh(message: types.Message):
                 }
 
                 collection.insert_one(fresh_news)
-                
+
                 await message.answer(f"{article_title.split(':: ')[0]}\n" f"{article_title.split(':: ')[1]}\nДата: {article_date}\nКинопоиск: {article_desc_links}\nСсылка: {article_url}")
             else:
                 continue
@@ -87,7 +97,6 @@ async def news_every_minute():
                     article_desc = item.description[0:700]
                     article_desc_links = item.description_links[1]
 
-
                     fresh_news = {
                         "_id": article_id,
                         "article_date": article_date,
@@ -98,7 +107,7 @@ async def news_every_minute():
                     }
 
                     collection.insert_one(fresh_news)
-                    
+
                     await bot.send_message(user_id, f"{article_title.split(':: ')[0]}\n" f"{article_title.split(':: ')[1]}\nДата: {article_date}\nКинопоиск: {article_desc_links}\nСсылка: {article_url}")
                 else:
                     continue
