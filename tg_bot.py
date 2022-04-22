@@ -12,6 +12,7 @@ logging.basicConfig(level=logging.INFO)
 token = os.environ.get('BOT_TOKEN')
 mongo_url = os.environ.get('MONGODB_URI')
 user_id = os.environ.get('USER_ID')
+bot = Bot(token)
 dp = Dispatcher(bot)
 
 
