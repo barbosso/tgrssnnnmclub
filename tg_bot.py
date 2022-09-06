@@ -7,6 +7,13 @@ from requests import get
 from pymongo import MongoClient
 import asyncio
 import json
+from dotenv import load_dotenv
+from pathlib import Path
+import os
+
+load_dotenv()
+env_path = Path('.')/'.env'
+load_dotenv(dotenv_path=env_path)
 
 logging.basicConfig(level=logging.INFO)
 token = os.environ.get('BOT_TOKEN')
@@ -78,7 +85,21 @@ async def fresh(message: types.Message):
 
                 await message.answer(f"{article_title.split(':: ')[0]}\n" f"{article_title.split(':: ')[1]}\nДата: {article_date}\nКинопоиск: {article_desc_links}\nСсылка: {article_url}")
             else:
-                continue
+                pass
+    else:
+        await message.answer('Новых постов нет')
+        
+        
+@dp.message_handler(commands='last5')
+async def last(message: types.Message):
+    for post in collection.find().limit(5).sort([('$natural',-1)]):        
+        title = post['article_title'].split(':: ')[1]
+        date = post['article_date']
+        url = post['article_url']
+        desc = post['article_desc'][0:700]
+        await bot.send_message(user_id, f'{title}\n{date}\n{url}\n{desc}')
+    
+    
 
 
 async def news_every_minute():
