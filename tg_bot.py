@@ -68,7 +68,8 @@ async def fresh(message: types.Message):
                         "article_date": article_date,
                         "article_title": article_title,
                         "article_url": article_url,
-                        "article_desc_link": article_desc_link
+                        "article_desc_link": article_desc_link,
+                        "article_category": article_category
                     }
                 collection.insert_one(fresh_news)
                 msg = f"{article_category}\n{article_title}\nДата: {article_date}\nСсылка: {article_url}\nДоп.Ссылка: {article_desc_link}"
