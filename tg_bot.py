@@ -1,19 +1,18 @@
-from urllib import request
 from aiogram import Bot, Dispatcher, types, executor
+from xml.etree import ElementTree
 import logging
-import os
-from rss_parser import Parser
-from requests import get
+import requests
 from pymongo import MongoClient
 import asyncio
-import json
 from dotenv import load_dotenv
 from pathlib import Path
 import os
+from bs4 import BeautifulSoup
+import lxml
 
-# load_dotenv()
-# env_path = Path('.')/'.env'
-# load_dotenv(dotenv_path=env_path)
+load_dotenv()
+env_path = Path('.')/'.env'
+load_dotenv(dotenv_path=env_path)
 
 logging.basicConfig(level=logging.INFO)
 token = os.environ.get('BOT_TOKEN')
@@ -39,51 +38,41 @@ urls_list = [
 
 @dp.message_handler(commands=['start', 'help'])
 async def start(message: types.Message):
-    # start_buttons = ["Все новости", "Последние 5 новостей", "Свежие новости"]
-    # keyboard = types.ReplyKeyboardMarkup(resize_keyboard=True)
-    # keyboard.add(*start_buttons)
     await message.answer("Лента новостей")
 
-
-@dp.message_handler(commands='btc')
-async def btc(message: types.Message):
-    r = get("https://blockchain.info/ticker")
-    price = json.loads(r.text)
-    btc_real = price["RUB"]['last']
-    btc_eft = btc_real / 5 / 2.38
-    btc_eft = int(btc_eft)
-    await message.answer(f"btc-rub: {btc_real}\nbtc Tarkov: {btc_eft}")
 
 
 @dp.message_handler(commands=['fresh'])
 async def fresh(message: types.Message):
     for url in urls_list:
-        xml = get(url)
-        parser = Parser(xml=xml.content, limit=5)
-        feed = parser.parse()
-
+        xml = requests.get(url)
+        root = ElementTree.fromstring(xml.content)
         fresh_news = {}
-        for item in feed.feed:
-            article_id = item.link.split("=")[1]
+        for i in root[0].findall("item")[:5]:
+            article_id = i[1].text.split("=")[1]
             if collection.count_documents({"_id": article_id}) == 0:
-                article_title = item.title
-                article_date = item.publish_date
-                article_url = item.link
-                article_desc = item.description[0:700]
-                article_desc_links = item.description_links[1]
-
+                article_title = i[0].text.split(':: ')[1].strip()
+                article_date = i[2].text.strip()
+                article_url = i[1].text.strip()
+                article_category = i[-1].text.strip()
+                article_desc_links = i[8].text
+                soup = BeautifulSoup(article_desc_links, "lxml")
+                if article_category in ["Зарубежные сериалы", "Отечественные сериалы", "Горячие новинки"]:
+                    article_desc_link = soup.find("noindex").find("a").get("href")
+                else:
+                    article_desc_link = soup.find("a", class_="postLink").get("href")
+                    if article_desc_link[:15] == 'https://href.li':
+                        article_desc_link = article_desc_link.split("?")[1]
                 fresh_news = {
-                    "_id": article_id,
-                    "article_date": article_date,
-                    "article_title": article_title,
-                    "article_url": article_url,
-                    "article_desc": article_desc,
-                    "article_desc_links": article_desc_links
-                }
-
+                        "_id": article_id,
+                        "article_date": article_date,
+                        "article_title": article_title,
+                        "article_url": article_url,
+                        "article_desc_link": article_desc_link
+                    }
                 collection.insert_one(fresh_news)
-
-                await message.answer(f"{article_title.split(':: ')[0]}\n" f"{article_title.split(':: ')[1]}\nДата: {article_date}\nКинопоиск: {article_desc_links}\nСсылка: {article_url}")
+                msg = f"{article_category}\n{article_title}\nДата: {article_date}\nСсылка: {article_url}\nДоп.Ссылка: {article_desc_link}"
+                await message.answer(msg)
             else:
                 pass
     else:
@@ -93,11 +82,11 @@ async def fresh(message: types.Message):
 @dp.message_handler(commands='last5')
 async def last(message: types.Message):
     for post in collection.find().limit(5).sort([('$natural',-1)]):        
-        title = post['article_title'].split(':: ')[1]
+        title = post['article_title']
         date = post['article_date']
         url = post['article_url']
-        desc = post['article_desc'][0:700]
-        await bot.send_message(user_id, f'{title}\n{date}\n{url}\n{desc}')
+        url_desc = post['article_desc_link']
+        await bot.send_message(user_id, f'{title}\n{date}\n{url}\n{url_desc}')
     
     
 
@@ -105,32 +94,35 @@ async def last(message: types.Message):
 async def news_every_minute():
     while True:
         for url in urls_list:
-            xml = get(url)
-            parser = Parser(xml=xml.content, limit=5)
-            feed = parser.parse()
-
+            xml = requests.get(url)
+            root = ElementTree.fromstring(xml.content)
             fresh_news = {}
-            for item in feed.feed:
-                article_id = item.link.split("=")[1]
+            for i in root[0].findall("item")[:5]:
+                article_id = i[1].text.split("=")[1]
                 if collection.count_documents({"_id": article_id}) == 0:
-                    article_title = item.title
-                    article_date = item.publish_date
-                    article_url = item.link
-                    article_desc = item.description[0:700]
-                    article_desc_links = item.description_links[1]
-
+                    article_title = i[0].text.split(':: ')[1].strip()
+                    article_date = i[2].text.strip()
+                    article_url = i[1].text.strip()
+                    article_category = i[-1].text.strip()
+                    article_desc_links = i[8].text
+                    soup = BeautifulSoup(article_desc_links, "lxml")
+                    if article_category in ["Зарубежные сериалы", "Отечественные сериалы", "Горячие новинки"]:
+                        article_desc_link = soup.find("noindex").find("a").get("href")
+                    else:
+                        article_desc_link = soup.find("a", class_="postLink").get("href")
+                        if article_desc_link[:15] == 'https://href.li':
+                            article_desc_link = article_desc_link.split("?")[1]
                     fresh_news = {
-                        "_id": article_id,
-                        "article_date": article_date,
-                        "article_title": article_title,
-                        "article_url": article_url,
-                        "article_desc": article_desc,
-                        "article_desc_links": article_desc_links
-                    }
-
+                            "_id": article_id,
+                            "article_date": article_date,
+                            "article_title": article_title,
+                            "article_url": article_url,
+                            "article_desc_link": article_desc_link,
+                            "article_category" : article_category
+                        }
                     collection.insert_one(fresh_news)
-
-                    await bot.send_message(user_id, f"{article_title.split(':: ')[0]}\n" f"{article_title.split(':: ')[1]}\nДата: {article_date}\nКинопоиск: {article_desc_links}\nСсылка: {article_url}")
+                    msg = f"{article_category}\n{article_title}\nДата: {article_date}\nСсылка: {article_url}\nДоп.Ссылка: {article_desc_link}"
+                    await bot.send_message(user_id, msg)
                 else:
                     continue
 
