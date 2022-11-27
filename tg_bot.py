@@ -82,12 +82,13 @@ async def fresh(message: types.Message):
         
 @dp.message_handler(commands='last5')
 async def last(message: types.Message):
-    for post in collection.find().limit(5).sort([('$natural',-1)]):        
+    for post in collection.find().limit(5).sort([('$natural',-1)]):
+        category = post['article_category']        
         title = post['article_title']
         date = post['article_date']
         url = post['article_url']
         url_desc = post['article_desc_link']
-        await bot.send_message(user_id, f'{title}\n{date}\n{url}\n{url_desc}')
+        await bot.send_message(user_id, f'{category}\n{title}\n{date}\n{url}\n{url_desc}')
     
     
 
