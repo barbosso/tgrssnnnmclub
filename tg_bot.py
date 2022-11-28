@@ -9,6 +9,7 @@ from pathlib import Path
 import os
 from bs4 import BeautifulSoup
 import lxml
+from aiogram.types import ParseMode
 
 # load_dotenv()
 # env_path = Path('.')/'.env'
@@ -72,8 +73,8 @@ async def fresh(message: types.Message):
                         "article_category": article_category
                     }
                 collection.insert_one(fresh_news)
-                msg = f"{article_category}\n{article_title}\nДата: {article_date}\nСсылка: {article_url}\nДоп.Ссылка: {article_desc_link}"
-                await message.answer(msg)
+                msg = f'{article_category}\n<a href="{article_url}">{article_title}</a>\nДата: {article_date}\nДоп.Ссылка: {article_desc_link}'
+                await message.answer(text=msg, parse_mode=ParseMode.HTML)
             else:
                 pass
     else:
@@ -83,12 +84,13 @@ async def fresh(message: types.Message):
 @dp.message_handler(commands='last5')
 async def last(message: types.Message):
     for post in collection.find().limit(5).sort([('$natural',-1)]):
-        category = post['article_category']        
-        title = post['article_title']
-        date = post['article_date']
-        url = post['article_url']
-        url_desc = post['article_desc_link']
-        await bot.send_message(user_id, f'{category}\n{title}\n{date}\n{url}\n{url_desc}')
+        article_category = post['article_category']        
+        article_title = post['article_title']
+        article_date = post['article_date']
+        article_url = post['article_url']
+        article_desc_link = post['article_desc_link']
+        msg = f'{article_category}\n<a href="{article_url}">{article_title}</a>\nДата: {article_date}\nДоп.Ссылка: {article_desc_link}'
+        await bot.send_message(user_id, text=msg, parse_mode=ParseMode.HTML)
     
     
 
@@ -123,8 +125,8 @@ async def news_every_minute():
                             "article_category" : article_category
                         }
                     collection.insert_one(fresh_news)
-                    msg = f"{article_category}\n{article_title}\nДата: {article_date}\nСсылка: {article_url}\nДоп.Ссылка: {article_desc_link}"
-                    await bot.send_message(user_id, msg)
+                    msg = f'{article_category}\n<a href="{article_url}">{article_title}</a>\nДата: {article_date}\nДоп.Ссылка: {article_desc_link}'
+                    await bot.send_message(user_id, text=msg, parse_mode=ParseMode.HTML)
                 else:
                     continue
 
