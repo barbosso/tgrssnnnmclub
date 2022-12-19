@@ -59,7 +59,10 @@ async def fresh(message: types.Message):
                 article_desc_links = i[8].text
                 soup = BeautifulSoup(article_desc_links, "lxml")
                 if article_category in ["Зарубежные сериалы", "Отечественные сериалы", "Горячие новинки"]:
-                    article_desc_link = soup.find("noindex").find("a").get("href")
+                    try:
+                        article_desc_link = soup.find("noindex").find("a").get("href")
+                    except AttributeError:
+                        article_desc_link = "not found"
                 else:
                     article_desc_link = soup.find("a", class_="postLink").get("href")
                     if article_desc_link[:15] == 'https://href.li':
