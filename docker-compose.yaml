@@ -1,0 +1,11 @@
+version: '3'
+services:
+  myapplication:
+    image: tgrssnnmbot:latest
+    environment: 
+      - MONGODB_CONNSTRING=mongodb://AzureDiamond:hunter2@mongodb
+  mongodb:
+    image: mongo:5.0
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=AzureDiamond
+      - MONGO_INITDB_ROOT_PASSWORD=hunter2

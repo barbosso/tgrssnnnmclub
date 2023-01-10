@@ -17,7 +17,7 @@ from aiogram.types import ParseMode
 
 logging.basicConfig(level=logging.INFO)
 token = os.environ.get('BOT_TOKEN')
-mongo_url = os.environ.get('MONGODB_URI')
+mongo_url = os.environ.get('MONGODB_CONNSTRING')
 user_id = os.environ.get('USER_ID')
 bot = Bot(token)
 dp = Dispatcher(bot)
