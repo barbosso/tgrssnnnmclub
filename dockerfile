@@ -2,6 +2,8 @@ FROM python:3
 
 ENV BOT_TOKEN="tg_bot_token"
 ENV USER_ID="tg_user_id"
+ENV http_proxy="http://host.docker.internal:9999"
+
 
 WORKDIR /usr/src/app
 

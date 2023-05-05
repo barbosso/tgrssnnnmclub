@@ -22,6 +22,13 @@ user_id = os.environ.get('USER_ID')
 bot = Bot(token)
 dp = Dispatcher(bot)
 
+try:
+    http_proxy_value = os.environ.get('http_proxy')
+except Exception:
+    http_proxy_value = None
+
+
+
 
 cluster = MongoClient(mongo_url)
 db = cluster["nnmnews"]
@@ -46,7 +53,7 @@ async def start(message: types.Message):
 @dp.message_handler(commands=['fresh'])
 async def fresh(message: types.Message):
     for url in urls_list:
-        xml = requests.get(url)
+        xml = requests.get(url, proxies=http_proxy_value)
         root = ElementTree.fromstring(xml.content)
         fresh_news = {}
         for i in root[0].findall("item")[:5]:
@@ -92,7 +99,7 @@ async def last(message: types.Message):
         article_date = post['article_date']
         article_url = post['article_url']
         article_desc_link = post['article_desc_link']
-        msg = f'{article_category}\n<a href="{article_url}">{article_title}</a>\nДата: {article_date}\nДоп.Ссылка: {article_desc_link}'
+        msg = f'{article_category}\n{article_title}\nДата: {article_date}\nДоп.Ссылка: {article_desc_link}\n{article_url}'
         await bot.send_message(user_id, text=msg, parse_mode=ParseMode.HTML)
     
     
@@ -101,7 +108,7 @@ async def last(message: types.Message):
 async def news_every_minute():
     while True:
         for url in urls_list:
-            xml = requests.get(url)
+            xml = requests.get(url, proxies=http_proxy_value)
             root = ElementTree.fromstring(xml.content)
             fresh_news = {}
             for i in root[0].findall("item")[:5]:
@@ -128,7 +135,7 @@ async def news_every_minute():
                             "article_category" : article_category
                         }
                     collection.insert_one(fresh_news)
-                    msg = f'{article_category}\n<a href="{article_url}">{article_title}</a>\nДата: {article_date}\nДоп.Ссылка: {article_desc_link}'
+                    msg = f'{article_category}\n{article_title}\nДата: {article_date}\nДоп.Ссылка: {article_desc_link}\n{article_url}'
                     await bot.send_message(user_id, text=msg, parse_mode=ParseMode.HTML)
                 else:
                     continue
